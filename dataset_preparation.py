@@ -6,6 +6,7 @@ import pandas as pd
 input_folder = 'OriginalStoriesSeparated'
 output_csv = 'dataset.csv'
 
+
 labels = {
     "DoctorWho" : 1,
     "XFiles": 2,
@@ -17,7 +18,7 @@ labels = {
     "Fringe": 8,
     "DoctorWhoSpinoffs": 9,
     "StarWarsBooks": 10,
-    "Futurama": 11
+    "Futurama": 0
 }
 
 
@@ -51,5 +52,5 @@ def list_txt_files():
         print(file)
 
 if __name__ == "__main__":
-    create_csv()
+    # change_label()
     
