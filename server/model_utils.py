@@ -5,38 +5,31 @@ import os
 
 class TextClassifier:
     def __init__(self, model_dir):
-        # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
         
-        # Load ONNX model
         model_path = os.path.join(model_dir, "bert_base_uncased_fine_tuend.onnx")
         self.session = ort.InferenceSession(model_path)
         
-        # Get model input names
         self.input_name = self.session.get_inputs()[0].name
 
     def _predict_logits(self, text):
-        # Tokenize input text
         inputs = self.tokenizer(
             text,
             max_length=128,
             padding='max_length',
             truncation=True,
             return_tensors='np',
-            return_token_type_ids=True  # Explicitly include token_type_ids
+            return_token_type_ids=True  
         )
         
-        # Prepare inputs for ONNX model
         ort_inputs = {
             'input_ids': inputs['input_ids'].astype(np.int64),
             'attention_mask': inputs['attention_mask'].astype(np.int64),
             'token_type_ids': inputs['token_type_ids'].astype(np.int64)
         }
         
-        # Run inference
         outputs = self.session.run(None, ort_inputs)
         
-        # Get predicted class (assuming binary or multi-class classification)
         logits = outputs[0]
         return logits
 
@@ -49,8 +42,19 @@ class TextClassifier:
     def predict_distribution(self, text):
         logits = self._predict_logits(text)
         probabilities = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
-        
+
         return {self.id2label(i): prob for i, prob in enumerate(probabilities[0])}
+
+    def predict(self, text) -> dict:
+        distribution = self.predict_distribution(text)
+        predicted_class = max(distribution, key=distribution.get)
+
+        return {
+                "predicted_class": predicted_class,
+                "distribution": distribution
+            }
+
+
 
 
     @staticmethod

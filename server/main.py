@@ -4,26 +4,22 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
 
-# Initialize FastAPI app
 app = FastAPI(title="NLP Classification Service", version="1.0.0")
 
-# Mount static files directory for serving HTML/CSS/JS
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Request model for prediction endpoint
 class PredictionRequest(BaseModel):
     text: str
 
 class PredictionResponse(BaseModel):
     text: str
     predicted_class: str
+    probabilities: dict[str, float]
 
-# Response model for detailed prediction endpoint
 class PredictionDistributionResponse(BaseModel):
     text: str
     probabilities: dict[str, float]
 
-# Import the model utilities
 from model_utils import  get_model
 
 @app.get("/", response_class=HTMLResponse)
@@ -41,14 +37,17 @@ async def predict(request: PredictionRequest):
         if not request.text.strip():
             raise HTTPException(status_code=400, detail="Text cannot be empty")
         
-        # Call your predict function
         model = get_model()
+        
 
-        predicted_class = model.predict_simple(request.text)
+        result = model.predict(request.text)
+        predicted_class = result['predicted_class']
+        probabilities = result['distribution']
         
         return PredictionResponse(
             text=request.text,
-            predicted_class=predicted_class
+            predicted_class=predicted_class,
+            probabilities=probabilities,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
@@ -62,13 +61,12 @@ async def predict_distribution(request: PredictionRequest):
         if not request.text.strip():
             raise HTTPException(status_code=400, detail="Text cannot be empty")
         
-        # Get detailed prediction with confidence
         model = get_model()
-        result = model.predict_distribution(request.text)
+        probabilities = model.predict_distribution(request.text)
         
         return PredictionDistributionResponse(
             text=request.text,
-            probabilities=result["all_probabilities"]
+            probabilities=probabilities
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")

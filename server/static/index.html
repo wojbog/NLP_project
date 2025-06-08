@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NLP Text Classification</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -168,6 +169,7 @@
         <div id="result" class="result">
             <h3>Classification Result:</h3>
             <div id="resultContent"></div>
+            <canvas id="probabilitiesChart" width="400" height="200"></canvas>
         </div>
     </div>
 
@@ -225,19 +227,49 @@
                 `;
                 
                 $('#resultContent').html(resultHtml);
+
+                const labels = Object.keys(response.probabilities);
+                const data = Object.values(response.probabilities);
+
+                if (window.probChart) {
+                    window.probChart.destroy();
+                }
+
+                const ctx = document.getElementById('probabilitiesChart').getContext('2d');
+                window.probChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Class Probabilities',
+                            data: data,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 1
+                            }
+                        }
+                    }
+                });
+
                 $('#result').removeClass('error').addClass('success').show();
             }
-            
             function showError(message) {
                 $('#resultContent').html(`<p><strong>Error:</strong> ${message}</p>`);
                 $('#result').removeClass('success').addClass('error').show();
             }
             
-            // Clear result when user starts typing
             $('#textInput').on('input', function() {
                 $('#result').hide();
             });
         });
     </script>
 </body>
+
 </html>
