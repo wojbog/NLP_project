@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLP Text Classification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        
+        .button-group {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .result.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .predicted-class {
+            font-size: 18px;
+            font-weight: bold;
+            padding: 8px 16px;
+            background-color: rgba(0, 123, 255, 0.1);
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 NLP Text Classification</h1>
+        
+        <form id="classificationForm">
+            <div class="form-group">
+                <label for="textInput">Enter text to classify:</label>
+                <textarea 
+                    id="textInput" 
+                    name="text" 
+                    placeholder="Type your text here... For example: 'This movie was absolutely amazing!' or 'I really disliked the service.'"
+                    required
+                ></textarea>
+            </div>
+            
+            <div class="button-group">
+                <button type="submit" id="classifyBtn">Classify Text</button>
+            </div>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Classifying your text...</div>
+        </div>
+        
+        <div id="result" class="result">
+            <h3>Classification Result:</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#classificationForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const text = $('#textInput').val().trim();
+                
+                if (!text) {
+                    showError('Please enter some text to classify.');
+                    return;
+                }
+                
+                // Show loading state
+                $('#loading').show();
+                $('#result').hide();
+                $('#classifyBtn').prop('disabled', true).text('Classifying...');
+                
+                // Make API request
+                $.ajax({
+                    url: '/predict',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ text: text }),
+                    success: function(response) {
+                        showSuccess(response);
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'An error occurred while classifying the text.';
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.detail) {
+                            errorMessage = xhr.responseJSON.detail;
+                        } else if (xhr.status === 0) {
+                            errorMessage = 'Unable to connect to the server. Please check your connection.';
+                        }
+                        
+                        showError(errorMessage);
+                    },
+                    complete: function() {
+                        // Hide loading state
+                        $('#loading').hide();
+                        $('#classifyBtn').prop('disabled', false).text('Classify Text');
+                    }
+                });
+            });
+            
+            function showSuccess(response) {
+                const resultHtml = `
+                    <p><strong>Input Text:</strong></p>
+                    <p style="font-style: italic; margin-bottom: 15px;">"${response.text}"</p>
+                    <p><strong>Predicted Class:</strong></p>
+                    <div class="predicted-class">${response.predicted_class}</div>
+                `;
+                
+                $('#resultContent').html(resultHtml);
+                $('#result').removeClass('error').addClass('success').show();
+            }
+            
+            function showError(message) {
+                $('#resultContent').html(`<p><strong>Error:</strong> ${message}</p>`);
+                $('#result').removeClass('success').addClass('error').show();
+            }
+            
+            // Clear result when user starts typing
+            $('#textInput').on('input', function() {
+                $('#result').hide();
+            });
+        });
+    </script>
+</body>
+</html>
