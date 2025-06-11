@@ -1,10 +1,9 @@
 .venv/
-
 .mypy_cache/
 __pycache__/
 *.pyc
 *.pyo
 OriginalStoriesSeparated/
 *.zip
-*.txt
 server/models/*
+sci*.txt
