@@ -177,64 +177,83 @@
         $(document).ready(function() {
             $('#classificationForm').on('submit', function(e) {
                 e.preventDefault();
-                
                 const text = $('#textInput').val().trim();
-                
-                if (!text) {
-                    showError('Please enter some text to classify.');
-                    return;
-                }
-                
-                // Show loading state
+                if (!text) return showError('Please enter some text.');
+
                 $('#loading').show();
                 $('#result').hide();
                 $('#classifyBtn').prop('disabled', true).text('Classifying...');
-                
-                // Make API request
+
                 $.ajax({
                     url: '/predict',
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({ text: text }),
+                    data: JSON.stringify({ text }),
                     success: function(response) {
-                        showSuccess(response);
+                        $.ajax({
+                            url: '/predict/importance',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ text: response.text }),
+                            success: function(impRes) {
+                                response.tokens = impRes.tokens;
+                                response.importances = impRes.importances;
+                                showSuccess(response);
+                            },
+                            error: function() {
+                                console.warn('Failed to fetch importances.');
+                                response.tokens = [];
+                                response.importances = [];
+                                showSuccess(response);
+                            }
+                        });
                     },
                     error: function(xhr) {
-                        let errorMessage = 'An error occurred while classifying the text.';
-                        
-                        if (xhr.responseJSON && xhr.responseJSON.detail) {
-                            errorMessage = xhr.responseJSON.detail;
-                        } else if (xhr.status === 0) {
-                            errorMessage = 'Unable to connect to the server. Please check your connection.';
-                        }
-                        
-                        showError(errorMessage);
+                        const msg = xhr.responseJSON?.detail || 'Classification failed.';
+                        showError(msg);
                     },
                     complete: function() {
-                        // Hide loading state
                         $('#loading').hide();
                         $('#classifyBtn').prop('disabled', false).text('Classify Text');
                     }
                 });
             });
+
             
             function showSuccess(response) {
                 const resultHtml = `
-                    <p><strong>Input Text:</strong></p>
-                    <p style="font-style: italic; margin-bottom: 15px;">"${response.text}"</p>
                     <p><strong>Predicted Class:</strong></p>
                     <div class="predicted-class">${response.predicted_class}</div>
+                    <p><strong>Input Text (importance-colored):</strong></p>
+                    <p id="coloredTextBlock" style="font-style: italic; margin-bottom: 15px;"></p>
                 `;
-                
                 $('#resultContent').html(resultHtml);
 
-                const labels = Object.keys(response.probabilities);
+                $.ajax({
+                    url: '/predict/importance',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ text: response.text }),
+                    success: function(impRes) {
+                        let coloredText = '';
+                        impRes.tokens.forEach((tok, i) => {
+                            const val = impRes.importances[i];
+                            if (["[PAD]", "[CLS]", "[SEP]"].includes(tok)) return;
+                            const r = val < 0 ? Math.round(-val * 255) : 0;
+                            const g = val > 0 ? Math.round(val * 255) : 0;
+                            const color = `rgb(${r},${g},0)`;
+                            coloredText += `<span style="background-color:${color};color:#EEEEEE;padding:2px;margin:1px;border-radius:2px;">${tok.replace(/^##/, '')}</span> `;
+                        });
+                        $('#coloredTextBlock').html(coloredText);
+                    },
+                    error: function() {
+                        $('#coloredTextBlock').html('(Importance unavailable)');
+                    }
+                });
+
+                const labels = Object.keys(response.probabilities || {});
                 const data = Object.values(response.probabilities);
-
-                if (window.probChart) {
-                    window.probChart.destroy();
-                }
-
+                if (window.probChart) window.probChart.destroy();
                 const ctx = document.getElementById('probabilitiesChart').getContext('2d');
                 window.probChart = new Chart(ctx, {
                     type: 'bar',
@@ -249,22 +268,17 @@
                         }]
                     },
                     options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 1
-                            }
-                        }
+                        scales: { y: { beginAtZero: true, max: 1 } }
                     }
                 });
-
                 $('#result').removeClass('error').addClass('success').show();
             }
+
             function showError(message) {
                 $('#resultContent').html(`<p><strong>Error:</strong> ${message}</p>`);
                 $('#result').removeClass('success').addClass('error').show();
             }
-            
+
             $('#textInput').on('input', function() {
                 $('#result').hide();
             });
