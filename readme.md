@@ -154,6 +154,8 @@ models/
 ...
 ```
 
+The model file can be created using *nlp-project-kaggle.ipynb* or downloaded from [Google Drive](https://drive.google.com/drive/folders/1KtXBa7N_IvDSngjA0lvXoqNFM-WcbpyD?usp=sharing).
+
 ---
 
 ## Credits
