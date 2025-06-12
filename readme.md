@@ -131,7 +131,7 @@ importance = (embedding * gradient).sum(dim=-1)
 Run basic unit tests using built-in Python tools:
 
 ```bash
-python -m unittest discover tests/
+python ./tests/test_model_utils.py
 ```
 
 Test coverage includes:
@@ -152,12 +152,6 @@ models/
 ├── model.safetensors
 ├── tokenizer_config.json
 ...
-```
-
-Make sure your `Dockerfile` copies them into the image:
-
-```dockerfile
-COPY ./models/ ./models/
 ```
 
 ---
