@@ -27,7 +27,7 @@ class TextClassifier:
     def _predict_logits(self, text):
         inputs = self.tokenizer(
             text,
-            max_length=128,
+            max_length=512,
             padding='max_length',
             truncation=True,
             return_tensors='np',
@@ -72,7 +72,7 @@ class TextClassifier:
     def compute_importance(self, text):
         inputs = self.tokenizer(
             text,
-            max_length=128,
+            max_length=512,
             padding='max_length',
             truncation=True,
             return_tensors='pt'
